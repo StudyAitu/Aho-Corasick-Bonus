@@ -295,3 +295,174 @@ public class Main {
         System.out.println("KMP matches: " + kmpResult);
         System.out.println("Overlapping matches test: PASSED");
     }
+
+    // =========================
+    // BENCHMARK
+    // =========================
+
+    static void benchmark() throws IOException {
+
+        int[] patternCounts = {10, 100, 1000};
+        int[] textLengths = {1000, 10000, 100000};
+
+        File resultsDirectory = new File("results");
+        resultsDirectory.mkdirs();
+
+        try (FileWriter writer =
+                     new FileWriter("results/benchmark_results.csv")) {
+
+            writer.write(
+                    "Patterns,TextLength,Algorithm,Run,TimeNs,AverageNs,Matches\n"
+            );
+
+            System.out.println("\n========== BENCHMARK ==========");
+
+            System.out.printf(
+                    "%-10s %-12s %-15s %-18s %-15s%n",
+                    "Patterns", "Text", "Algorithm",
+                    "Average (ns)", "Matches"
+            );
+
+            for (int count : patternCounts) {
+
+                for (int length : textLengths) {
+
+                    Random random =
+                            new Random(42L + count * 1000L + length);
+
+                    String[] patterns =
+                            generatePatterns(count, random);
+
+                    String text =
+                            generateText(length, random);
+
+                    // Warm-up both algorithms
+                    for (int w = 0; w < 2; w++) {
+                        AhoCorasick warmup =
+                                new AhoCorasick(patterns);
+
+                        warmup.search(text);
+                        searchWithKMP(text, patterns);
+                    }
+
+                    long ahoTotal = 0;
+                    long kmpTotal = 0;
+
+                    long ahoMatches = 0;
+                    long kmpMatches = 0;
+
+                    // Aho-Corasick: build + search
+                    for (int run = 1; run <= RUNS; run++) {
+
+                        long start = System.nanoTime();
+
+                        AhoCorasick aho =
+                                new AhoCorasick(patterns);
+
+                        long matches = aho.search(text);
+
+                        long elapsed =
+                                System.nanoTime() - start;
+
+                        if (run == 1) {
+                            ahoMatches = matches;
+                        } else if (matches != ahoMatches) {
+                            throw new AssertionError(
+                                    "Inconsistent Aho-Corasick results"
+                            );
+                        }
+
+                        ahoTotal += elapsed;
+
+                        writer.write(
+                                count + "," + length +
+                                        ",Aho-Corasick," + run + "," +
+                                        elapsed + ",," + matches + "\n"
+                        );
+                    }
+
+                    // KMP: search separately for every pattern
+                    for (int run = 1; run <= RUNS; run++) {
+
+                        long start = System.nanoTime();
+
+                        long matches =
+                                searchWithKMP(text, patterns);
+
+                        long elapsed =
+                                System.nanoTime() - start;
+
+                        if (run == 1) {
+                            kmpMatches = matches;
+                        } else if (matches != kmpMatches) {
+                            throw new AssertionError(
+                                    "Inconsistent KMP results"
+                            );
+                        }
+
+                        kmpTotal += elapsed;
+
+                        writer.write(
+                                count + "," + length +
+                                        ",KMP," + run + "," +
+                                        elapsed + ",," + matches + "\n"
+                        );
+                    }
+
+                    if (ahoMatches != kmpMatches) {
+                        throw new AssertionError(
+                                "Algorithms produced different results!"
+                        );
+                    }
+
+                    long ahoAverage = ahoTotal / RUNS;
+                    long kmpAverage = kmpTotal / RUNS;
+
+                    // Write average rows
+                    writer.write(
+                            count + "," + length +
+                                    ",Aho-Corasick,AVERAGE,," +
+                                    ahoAverage + "," + ahoMatches + "\n"
+                    );
+
+                    writer.write(
+                            count + "," + length +
+                                    ",KMP,AVERAGE,," +
+                                    kmpAverage + "," + kmpMatches + "\n"
+                    );
+
+                    System.out.printf(
+                            "%-10d %-12d %-15s %-18d %-15d%n",
+                            count, length, "Aho-Corasick",
+                            ahoAverage, ahoMatches
+                    );
+
+                    System.out.printf(
+                            "%-10d %-12d %-15s %-18d %-15d%n",
+                            count, length, "KMP",
+                            kmpAverage, kmpMatches
+                    );
+                }
+            }
+        }
+
+        System.out.println("\nBenchmark completed!");
+        System.out.println(
+                "Results saved to results/benchmark_results.csv"
+        );
+    }
+
+    // =========================
+    // MAIN
+    // =========================
+
+    public static void main(String[] args) throws IOException {
+
+        System.out.println("Aho-Corasick Bonus Task");
+        System.out.println("=======================");
+
+        correctnessTests();
+
+        benchmark();
+    }
+}
