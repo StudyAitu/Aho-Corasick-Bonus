@@ -212,3 +212,86 @@ public class Main {
 
         return totalMatches;
     }
+
+    // =========================
+    // TEST DATA GENERATION
+    // =========================
+
+    static String generateText(int length, Random random) {
+
+        StringBuilder text = new StringBuilder(length);
+
+        for (int i = 0; i < length; i++) {
+            text.append((char) ('a' + random.nextInt(26)));
+        }
+
+        return text.toString();
+    }
+
+    static String[] generatePatterns(int count, Random random) {
+
+        String[] patterns = new String[count];
+        Set<String> unique = new HashSet<>();
+
+        for (int i = 0; i < count; i++) {
+
+            String pattern;
+
+            do {
+                int length = 5 + random.nextInt(6);
+
+                StringBuilder builder = new StringBuilder();
+
+                for (int j = 0; j < length; j++) {
+                    builder.append((char) ('a' + random.nextInt(26)));
+                }
+
+                pattern = builder.toString();
+
+            } while (!unique.add(pattern));
+
+            patterns[i] = pattern;
+        }
+
+        return patterns;
+    }
+
+    // =========================
+    // CORRECTNESS TESTS
+    // =========================
+
+    static void correctnessTests() {
+
+        String text = "ushershehishe";
+
+        String[] patterns = {
+                "he", "she", "his", "hers"
+        };
+
+        AhoCorasick aho = new AhoCorasick(patterns);
+
+        long ahoResult = aho.search(text);
+        long kmpResult = searchWithKMP(text, patterns);
+
+        if (ahoResult != kmpResult) {
+            throw new AssertionError("Aho-Corasick and KMP results differ!");
+        }
+
+        // Test overlapping occurrences
+        String overlapText = "aaaa";
+        String[] overlapPatterns = {"aa", "aaa"};
+
+        AhoCorasick overlapAho =
+                new AhoCorasick(overlapPatterns);
+
+        long overlapResult = overlapAho.search(overlapText);
+
+        if (overlapResult != 5) {
+            throw new AssertionError("Overlapping matches test failed!");
+        }
+
+        System.out.println("Correctness tests: PASSED");
+        System.out.println("Aho-Corasick matches: " + ahoResult);
+        System.out.println("KMP matches: " + kmpResult);
+        System.out.println("Overlapping matches test: PASSED");
+    }
